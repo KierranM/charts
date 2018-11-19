@@ -87,6 +87,7 @@ Parameter | Description | Default
 `agent.prometheus.port` | Agent Prometheus metrics port | `9620`
 `agent.prometheus.scrape` | Whether or not Prometheus metrics for the agent should be scraped | `true`
 `agent.prometheus.syncInterval` | Agent Prometheus synchronization interval | `5s`
+`agent.prometheus.service.enabled` | Expose Agent prometheus metrics as a service | `false`
 `agent.probes.liveness.initialDelaySeconds` | Number of seconds after the container starts before the liveness probes start | `3`
 `agent.probes.liveness.periodSeconds` | How often (in seconds) the probe will be performed | `3`
 `agent.probes.liveness.timeoutSeconds` | Number of seconds after which the probe will timeout waiting for the command to finish | `1`
@@ -117,6 +118,7 @@ Parameter | Description | Default
 `server.prometheus.port` | Server Prometheus metrics port | `9620`
 `server.prometheus.scrape` | Whether or not Prometheus metrics for the server should be scraped | `true`
 `server.prometheus.syncInterval` | Server Prometheus synchronization interval | `5s`
+`server.prometheus.service.enabled` | Expose Server prometheus metrics as a service | `false`
 `server.podAnnotations` | Annotations to be added to server pods | `{}`
 `server.podLabels` | Labels to be added to server pods | `{}`
 `server.probes.serverAddress` | Address that readiness and liveness probes will hit | `localhost`
