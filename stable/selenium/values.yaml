@@ -110,6 +110,42 @@ hub:
     #    hosts:
     #      - selenium-hub.local
 
+  ## Configuration for the selenium prometheus exporter sidecar
+  ## @see https://github.com/wakeful/selenium_grid_exporter
+  prometheusExporter:
+    ## Enables the prometheus exporter sidecar
+    enabled: false
+
+    ## Configure the image to use for the exporter
+    image: "wakeful/selenium-grid-exporter"
+    tag: "0.2.0"
+    pullPolicy: "IfNotPresent"
+
+    ## The port to expose the metrics on
+    ## @see https://github.com/prometheus/prometheus/wiki/Default-port-allocations
+    port: 9522
+    ## Bind globally
+    bindAddress: "0.0.0.0"
+    ## Path for the metrics endpoint
+    telemetryPath: "/metrics"
+
+    ## Configure readiness and liveness TCP checks
+    ## @note the sidecar has no healthcheck endpoint
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    livenessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 20
+
+    ## Resources allocated to the sidecar
+    resources:
+      requests:
+        cpu: 10m
+        memory: 10Mi
+      limits:
+        cpu: 20m
+        memory: 20Mi
 
 chrome:
   ## Enable the creation of a node-chrome pod

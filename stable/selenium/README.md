@@ -73,6 +73,18 @@ The following table lists the configurable parameters of the Selenium chart and 
 | `hub.ingress.path` | The path for this ingress from which to route the traffic to the selenium hub | `/` |
 | `hub.ingress.hosts` | The list hosts for which this ingress should resolve the selenium hub | `[selenium-hub.local]` |
 | `hub.ingress.tls` | The tls secret to configure ssl for this ingress | `[]` |
+| `hub.prometheusExporter.enabled` | Enables/Disables the prometheus exporter sidecar | `false` |
+| `hub.prometheusExporter.image` | The image used for the prometheus exporter sidecar | `wakeful/selenium-grid-exporter` |
+| `hub.prometheusExporter.tag` | Image tag/version of the prometheus exporter sidecar | `0.2.0` |
+| `hub.prometheusExporter.pullPolicy` | The pull policy for the prometheus exporter image | `IfNotPresent` |
+| `hub.prometheusExporter.port` | The port that metrics will be exposed on  | `9522` |
+| `hub.prometheusExporter.bindAddress` | The address that the exporter will bind within the pod namespace | `0.0.0.0` |
+| `hub.prometheusExporter.telemetryPath` | Enables/Disables the prometheus exporter sidecar | `/metrics` |
+| `hub.prometheusExporter.readinessProbe.initialDelaySeconds` | Time before starting the readiness probe for the exporter sidecar | `5` |
+| `hub.prometheusExporter.readinessProbe.periodSeconds` | Time between the readiness probes for the exporter sidecar | `10` |
+| `hub.prometheusExporter.livenessProbe.initialDelaySeconds` | Time before starting the liveness probe for the exporter sidecar | `5` |
+| `hub.prometheusExporter.livenessProbe.periodSeconds` | Time between the liveness probes for the exporter sidecar | `10` |
+| `hub.prometheusExporter.resources` | The resources for the exporter sidecar | `{"requests":{"cpu": "10m", memory: "100Mi"},"limits":{"cpu":"20m", "memory":"200Mi"}}` |
 | `chrome.enabled` | Schedule a chrome node pod | `false` |
 | `chrome.image` | The selenium node chrome image | `selenium/node-chrome` |
 | `chrome.tag` | The selenium node chrome tag | `3.14.0` |
@@ -177,3 +189,79 @@ $ helm install --name my-release -f values.yaml stable/selenium
 ```
 
 > **Tip**: You can use the default [values.yaml](values.yaml)
+
+## Horizontal Pod Scaling
+
+If you wish to have the number of drivers scale automatically to meet
+the demand on your selenium grid, you can use Prometheus and a HorizontalPodAutoscaler to make your grid dynamic.
+
+To do so you will need to enable the prometheus exporter sidecar by setting
+`hub.prometheusExporter.enabled` to `true`, and configuring prometheus to scrape the
+metrics endpoint of the hub service.
+
+If you are using the [prometheus](https://github.com/helm/charts/tree/master/stable/prometheus)
+chart to create your prometheus server, then you can add the following annotations to the hub pod:
+```yaml
+hub:
+    podAnnotations:
+        prometheus.io/scrape: true
+        prometheus.io/port: 9522
+```
+
+If you are using the [prometheus-operator](https://github.com/helm/charts/tree/master/stable/prometheus-operator)
+chart to create your prometheus server then you will need to create a ServiceMonitor resource for selenium, for example:
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: my-selenium-grid
+  namespace: my-namespace
+  labels:
+    app: my-selenium-grid
+spec:
+  selector:
+    matchLabels:
+      app: my-selenium-grid-selenium-hub
+      release: my-selenium-grid
+  namespaceSelector:
+    matchNames:
+      - my-namespace
+  jobLabel: my-selenium-grid
+  endpoints:
+    - port: metrics
+      interval: 30s
+```
+This will scrape the selenium grid metrics every 30s.
+
+To be able to use these metrics as a data source for a HPA, you will need to
+install the [prometheus-adapter](https://github.com/helm/charts/tree/master/stable/prometheus-adapter).
+
+You can then create a HorizontalPodAutoScaler:
+```yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-selenium-grid
+  namespace: my-namespace
+spec:
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: my-selenium-grid-selenium-chrome
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Object
+      object:
+        target:
+          kind: Service
+          name: my-selenium-grid-selenium-hub
+        metricName: selenium_grid_hub_sessions_backlog
+        targetValue: 1 # Can't be zero
+```
+
+Considerations:
+- targetValue must be a postive integer, so you cannot scale to have a target backlog of size 0
+- HPAs can't scale up to meet a value i.e you can't create a scaler too keep `selenium_grid_hub_slotsFree` at 2
+- There is no way to distinguish between Chrome/Firefox etc. with the current metrics. A possible workaround to this
+  would be to have a selenium grid for each browser type and scale based on that.

@@ -83,6 +83,30 @@ spec:
             {{- end }}
           resources:
 {{ toYaml .Values.hub.resources | indent 12 }}
+        {{- if .Values.hub.prometheusExporter.enabled }}
+        - name: {{ .Chart.Name }}-prometheus-exporter
+          image: "{{ .Values.hub.prometheusExporter.image }}:{{ .Values.hub.prometheusExporter.tag }}"
+          imagePullPolicy: {{ .Values.hub.prometheusExporter.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.hub.prometheusExporter.port }}
+              name: metrics
+          args:
+            - -listen-address={{ .Values.hub.prometheusExporter.bindAddress }}:{{ .Values.hub.prometheusExporter.port }}
+            - -scrape-uri=http://localhost:{{ .Values.hub.port }}
+            - -telemetry-path={{ .Values.hub.prometheusExporter.telemetryPath }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.hub.prometheusExporter.port }}
+            initialDelaySeconds: {{ .Values.hub.prometheusExporter.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.hub.prometheusExporter.readinessProbe.periodSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.hub.prometheusExporter.port }}
+            initialDelaySeconds: {{ .Values.hub.prometheusExporter.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.hub.prometheusExporter.livenessProbe.periodSeconds }}
+          resources:
+{{ toYaml .Values.hub.prometheusExporter.resources | indent 12 }}
+        {{- end }}
       nodeSelector:
 {{- if .Values.hub.nodeSelector }}
 {{ toYaml .Values.hub.nodeSelector | indent 8  }}
