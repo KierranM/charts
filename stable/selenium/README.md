@@ -190,7 +190,7 @@ $ helm install --name my-release -f values.yaml stable/selenium
 
 > **Tip**: You can use the default [values.yaml](values.yaml)
 
-## Horizontal Pod Scaling
+## Horizontal Pod Scaling (experimental)
 
 If you wish to have the number of drivers scale automatically to meet
 the demand on your selenium grid, you can use Prometheus and a HorizontalPodAutoscaler to make your grid dynamic.
@@ -258,6 +258,13 @@ spec:
           name: my-selenium-grid-selenium-hub
         metricName: selenium_grid_hub_sessions_backlog
         targetValue: 1 # Can't be zero
+    - type: Object
+      object:
+        target:
+          kind: Service
+          name: my-selenium-grid-selenium-hub
+        metricName: selenium_grid_hub_slotsFree
+        targetValue: 1 # This stops the HPA from scaling down. Ever.
 ```
 
 Considerations:
@@ -265,3 +272,4 @@ Considerations:
 - HPAs can't scale up to meet a value i.e you can't create a scaler too keep `selenium_grid_hub_slotsFree` at 2
 - There is no way to distinguish between Chrome/Firefox etc. with the current metrics. A possible workaround to this
   would be to have a selenium grid for each browser type and scale based on that.
+- If scaling on the `selenium_grid_hub_sessions_backlog` the autoscaler may scale up, the hub will assign all sessions to new nodes, and the autoscaler may scale down the nodes currently running the tests.
