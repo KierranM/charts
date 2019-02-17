@@ -64,6 +64,7 @@ controller:
   ##
   scope:
     enabled: false
+    disableClusterScope: false
     namespace: ""   # defaults to .Release.Namespace
 
   ## Additional command line arguments to pass to nginx-ingress-controller
